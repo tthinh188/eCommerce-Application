@@ -1,13 +1,13 @@
 package com.example.demo.controller;
 
-import com.example.demo.controllers.OrderController;
+import com.example.demo.controllers.CartController;
 import com.example.demo.model.persistence.Cart;
 import com.example.demo.model.persistence.Item;
 import com.example.demo.model.persistence.User;
-import com.example.demo.model.persistence.UserOrder;
 import com.example.demo.model.persistence.repositories.CartRepository;
-import com.example.demo.model.persistence.repositories.OrderRepository;
+import com.example.demo.model.persistence.repositories.ItemRepository;
 import com.example.demo.model.persistence.repositories.UserRepository;
+import com.example.demo.model.requests.ModifyCartRequest;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,18 +17,22 @@ import org.springframework.http.ResponseEntity;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class OrderControllerTest {
+
+public class CartControllerTest {
+    @Autowired
+    private CartController cartController;
 
     @Autowired
-    private OrderController orderController;
+    private ItemRepository itemRepository = mock(ItemRepository.class);
 
     @Autowired
-    private OrderRepository orderRepository = mock(OrderRepository.class);
+    private CartRepository cartRepository = mock(CartRepository.class);
 
     @Autowired
     private UserRepository userRepository = mock(UserRepository.class);
@@ -46,13 +50,16 @@ public class OrderControllerTest {
     private static final String OTHER_USER = "other";
 
     @Before
-    public void setUp() {
-        orderController = new OrderController(orderRepository, userRepository);
+    public void setup() {
+        cartController = new CartController(userRepository, cartRepository, itemRepository);
+
+        Cart cart = new Cart();
 
         User user = new User();
         user.setId(0);
         user.setUsername(TEST_USERNAME);
         user.setPassword(TEST_PASSWORD);
+        user.setCart(cart);
 
         Item item = new Item();
         item.setId(1L);
@@ -60,49 +67,55 @@ public class OrderControllerTest {
         item.setDescription(ITEM1_DESCRIPTION);
         BigDecimal price = ITEM1_PRICE;
         item.setPrice(price);
-        List<Item> items = new ArrayList<Item>();
-        items.add(item);
 
-        Cart cart = new Cart();
-        cart.setId(0L);
-        cart.setUser(user);
-        cart.setItems(items);
-
-        BigDecimal total = BigDecimal.valueOf(2.99);
-        cart.setTotal(total);
-        user.setCart(cart);
         when(userRepository.findByUsername(TEST_USERNAME)).thenReturn(user);
-        when(userRepository.findByUsername(OTHER_USER)).thenReturn(null);
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+
     }
 
     @Test
-    public void testSubmitOrder() {
-        ResponseEntity<UserOrder> response = orderController.submit(TEST_USERNAME);
+    public void TestAddToCart() {
+        ModifyCartRequest request = new ModifyCartRequest();
+        request.setItemId(1L);
+        request.setQuantity(1);
+        request.setUsername(TEST_USERNAME);
+        ResponseEntity<Cart> response = cartController.addTocart(request);
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        UserOrder order = response.getBody();
-        assertNotNull(order);
-        assertEquals(ITEM1_PRICE, order.getTotal());
-        assertEquals(1, order.getItems().size());
+        Cart cart = response.getBody();
+        assertNotNull(cart);
+        assertEquals(ITEM1, cart.getItems().get(0).getName());
+        assertEquals(ITEM1_PRICE, cart.getTotal());
     }
 
     @Test
-    public void testSubmitOrderInvalidUser() {
-        ResponseEntity<UserOrder> response = orderController.submit(OTHER_USER);
+    public void TestAddToCartInvalidUser() {
+        ModifyCartRequest request = new ModifyCartRequest();
+        request.setItemId(1L);
+        request.setQuantity(1);
+        request.setUsername("non exist user");
+        ResponseEntity<Cart> response = cartController.addTocart(request);
         assertNotNull(response);
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
 
     @Test
-    public void getOrderFromUser() {
-        ResponseEntity<List<UserOrder>> response = orderController.getOrdersForUser(TEST_USERNAME);
-        assertNotNull(response);
+    public void TestRemoveFromCart() {
+        ModifyCartRequest request = new ModifyCartRequest();
+        request.setItemId(1L);
+        request.setQuantity(1);
+        request.setUsername(TEST_USERNAME);
+        ResponseEntity<Cart> response = cartController.removeFromcart(request);
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    public void getOrderFromInvalidUser() {
-        ResponseEntity<List<UserOrder>> response = orderController.getOrdersForUser(OTHER_USER);
+    public void TestRemoveFromCartInvalidUser() {
+        ModifyCartRequest request = new ModifyCartRequest();
+        request.setItemId(1L);
+        request.setQuantity(1);
+        request.setUsername("non exist user");
+        ResponseEntity<Cart> response = cartController.removeFromcart(request);
         assertNotNull(response);
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
