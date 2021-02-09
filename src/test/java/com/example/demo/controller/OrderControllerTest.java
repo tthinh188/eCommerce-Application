@@ -5,7 +5,6 @@ import com.example.demo.model.persistence.Cart;
 import com.example.demo.model.persistence.Item;
 import com.example.demo.model.persistence.User;
 import com.example.demo.model.persistence.UserOrder;
-import com.example.demo.model.persistence.repositories.CartRepository;
 import com.example.demo.model.persistence.repositories.OrderRepository;
 import com.example.demo.model.persistence.repositories.UserRepository;
 import org.junit.Before;
